@@ -16,7 +16,7 @@ async fn main() -> Result<()> {
 
     server.at("/").get(|_| async {
         Ok(tide::Response::builder(200)
-            .content_type(mimes::html())
+            .content_type(mime::html())
             .body(
                 vec![
                     anchor("/db.json"),
@@ -67,20 +67,6 @@ async fn clear_db(db: &sled::Db) -> Result<()> {
         tree.flush_async().await?;
     }
     Ok(())
-}
-
-mod mimes {
-    use std::str::FromStr;
-    use tide::http::Mime;
-
-    #[allow(dead_code)]
-    pub(crate) fn html() -> Mime {
-        Mime::from_str("text/html; charset=utf-8").unwrap()
-    }
-
-    pub(crate) fn json() -> Mime {
-        Mime::from_str("application/json; charset=utf-8").unwrap()
-    }
 }
 
 type Request = tide::Request<propaganda::App>;

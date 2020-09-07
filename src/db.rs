@@ -1,15 +1,16 @@
 use anyhow::*;
 use async_trait::async_trait;
 use sqlx::prelude::*;
+use mockall::automock;
 
-#[derive(sqlx::FromRow, Debug)]
+#[derive(sqlx::FromRow, Debug, serde::Serialize)]
 pub struct Article {
     pub url: String,
     pub article_id: i32,
     pub updated_at: i32,
 }
 
-#[derive(sqlx::FromRow, Debug)]
+#[derive(sqlx::FromRow, Debug, serde::Serialize)]
 pub struct SnapshotMetadata {
     pub article_id: i32,
     pub snapshot_id: i32,
@@ -24,10 +25,12 @@ pub struct Snapshot {
     pub html: String,
 }
 
+#[automock]
 #[async_trait]
 pub trait ProvideArticles {
     async fn ensure_created_tables(&mut self) -> Result<()>;
     async fn get_outdated_articles(&mut self, limit: i32) -> Result<Vec<Article>>;
+    async fn get_articles(&mut self, offset: i32, limit: i32) -> Result<Vec<Article>>;
     async fn insert_article(&mut self, url: &str) -> Result<Article>;
     async fn update_article(&mut self, url: &str, updated_at: i32) -> Result<()>;
     async fn get_article(&mut self, url: &str) -> Result<Article>;
@@ -78,6 +81,22 @@ impl ProvideArticles for sqlx::SqliteConnection {
             LIMIT $1",
         )
         .bind(limit)
+        .fetch_all(self)
+        .await
+        .anyhow()
+    }
+
+    async fn get_articles(&mut self, offset: i32, limit: i32) -> Result<Vec<Article>> {
+        // TODO order by created_at
+        sqlx::query_as::<_, Article>(
+            r"
+            SELECT url, article_id, updated_at
+            FROM articles
+            ORDER BY updated_at ASC
+            LIMIT $1 OFFSET $2",
+        )
+        .bind(limit)
+        .bind(offset)
         .fetch_all(self)
         .await
         .anyhow()

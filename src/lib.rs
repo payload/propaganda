@@ -6,6 +6,8 @@ use sqlx::prelude::*;
 use tide::log;
 
 pub mod db;
+pub mod http;
+pub mod mime;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ArticleVersion {

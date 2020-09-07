@@ -23,3 +23,5 @@ itertools = "0.9.0"
 futures = "0.3.5"
 sqlx = { version = "0.3.5", features = ["sqlite"] }
 async-trait = "0.1.40"
+color-backtrace = "0.4.2"
+mockall = "0.8.0"
