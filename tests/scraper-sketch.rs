@@ -1,12 +1,5 @@
 use anyhow::*;
-use evmap_derive::ShallowCopy;
-use itertools::Itertools;
-use itertools;
-use prettydiff;
-use async_std::{
-    prelude::*,
-    task,
-};
+use async_std::task;
 use std::time::Duration;
 use futures::prelude::*;
 

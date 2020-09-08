@@ -1,7 +1,7 @@
 use anyhow::*;
 use evmap_derive::ShallowCopy;
-use itertools::Itertools;
 use itertools;
+use itertools::Itertools;
 use prettydiff;
 
 #[derive(Debug, Eq, PartialEq, Hash, ShallowCopy)]
@@ -47,7 +47,12 @@ async fn fun() -> Result<()> {
 
         article_snapshots_w
             .insert(url.to_string(), ArticleSnapshot { html })
-            .insert(url.to_string(), ArticleSnapshot { html: modified_html })
+            .insert(
+                url.to_string(),
+                ArticleSnapshot {
+                    html: modified_html,
+                },
+            )
             .refresh();
     }
 
@@ -62,7 +67,7 @@ async fn fun() -> Result<()> {
 
     println!("// show article diffs");
 
-    for (url, snapshots) in &article_snapshots_r.read().unwrap() {
+    for (_url, snapshots) in &article_snapshots_r.read().unwrap() {
         // for (a, b) in itertools snapshots.iter().peekable() {
         //     prettydiff::diff_words(a, b);
         // }

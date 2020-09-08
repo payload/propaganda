@@ -17,7 +17,7 @@ pub struct SnapshotMetadata {
     pub archived_at: i32,
 }
 
-#[derive(sqlx::FromRow, Debug)]
+#[derive(sqlx::FromRow, Debug, serde::Serialize)]
 pub struct Snapshot {
     pub article_id: i32,
     pub snapshot_id: i32,
@@ -105,12 +105,13 @@ impl ProvideArticles for sqlx::SqliteConnection {
     async fn insert_article(&mut self, url: &str) -> Result<Article> {
         sqlx::query_as(
             r"
-            INSERT INTO articles ( url, updated_at )
+            INSERT OR IGNORE INTO articles ( url, updated_at )
             VALUES ( $1, $2 );
-            SELECT * FROM articles WHERE article_id = last_insert_rowid();",
+            SELECT * FROM articles WHERE url = $3 ;",
         )
         .bind(url)
         .bind(0)
+        .bind(url)
         .fetch_one(self)
         .await
         .anyhow()

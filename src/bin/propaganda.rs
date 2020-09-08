@@ -1,103 +1,65 @@
 use anyhow::*;
-use async_std::prelude::*;
-use async_trait::async_trait;
+use propaganda::db::ProvideArticles;
 use propaganda::*;
-use sqlx::prelude::*;
-use tide::log;
 
 #[async_std::main]
 async fn main() -> Result<()> {
     tide::log::with_level(tide::log::LevelFilter::Info);
 
-    let app = App::from_db(sled::open("sled.db")?)?;
-    app.insert_default_source_if_empty();
+    let db_path = "sqlite:propaganda.db";
+    let pool = sqlx::SqlitePool::new(&db_path)
+        .await
+        .expect("SqlitePool::new");
 
-    let mut server = tide::with_state(app);
+    let mut conn = pool.acquire().await?;
+    conn.ensure_created_tables().await?;
 
-    server.at("/").get(|_| async {
-        Ok(tide::Response::builder(200)
-            .content_type(mime::html())
-            .body(
-                vec![
-                    anchor("/db.json"),
-                    anchor("/clear_db"),
-                    anchor("/fetch_source"),
-                ]
-                .join("<br />"),
-            )
-            .build())
-    });
+    let mut server = tide::with_state(pool);
+
+    server.at("/get_articles").get(&http::get_articles);
+    server
+        .at("/get_snaphot_metadatas_from_article")
+        .get(&http::get_snaphot_metadatas_from_article);
+    server.at("/insert_article").get(&http::insert_article);
+    server.at("/get_snapshot").get(&http::get_snaphot);
 
     server
-        .at("/db.json")
-        .get(|req: Request| async move { Ok(db_to_json(&req.app().db).await?) });
+        .at("/favicon.ico")
+        .get(|_| async { Ok(tide::Response::builder(200).build()) });
 
-    server.at("/clear_db").get(|req: Request| async {
-        clear_db(&req.app().db).await?;
-        Ok(req.redirect("/")?)
-    });
+    // in case there is no body, make it html and show the debug_index
+    // also show the error string in case there is any
+    //
+    // with some error handling and string matching this could be
+    // a generic interactive HTTP API user interface
+    server.with(tide::utils::After(|mut res: tide::Response| async {
+        if res.len().unwrap_or_default() == 0 {
+            res.set_content_type(mime::html());
 
-    server
-        .at("/fetch_source")
-        .get(|req: Request| async { Ok(req.redirect("/")?) });
-
-    server.listen("localhost:3000").await?;
-
-    Ok(())
-}
-
-async fn run_tide() -> Result<()> {
-    let db = sqlx::SqlitePool::new("file:propaganda.db").await?;
-
-    db.acquire().await?;
-
-    Ok(())
-}
-
-
-fn anchor(href: &str) -> String {
-    format!("<a href={}>{}</a>", href, href)
-}
-
-async fn clear_db(db: &sled::Db) -> Result<()> {
-    log::info!("clear_db");
-    for tree_name in db.tree_names() {
-        let tree = db.open_tree(tree_name)?;
-        tree.clear()?;
-        tree.flush_async().await?;
-    }
-    Ok(())
-}
-
-type Request = tide::Request<propaganda::App>;
-
-trait RequestExt {
-    fn app(&self) -> &propaganda::App;
-    fn redirect(self, location: &str) -> Result<tide::Response>;
-}
-
-impl RequestExt for Request {
-    fn app(&self) -> &propaganda::App {
-        self.state()
-    }
-
-    fn redirect(self, location: &str) -> Result<tide::Response> {
-        Ok(tide::Redirect::new(location).into())
-    }
-}
-
-/*
-fn update_articles() {
-    for source in article_sources {
-        for article in fetch_articles(source) {
-            if let Some(existing_article) = get_existing_article(article) {
-                if interesting_diff(existing_article, article) {
-                    add_article_snapshot(article);
-                }
+            res.set_body(if let Some(err) = res.error() {
+                format!("<h4>{}</h4>{}", err.to_string(), debug_index())
             } else {
-                add_new_article(article);
-            }
+                format!("<h4>{}</h4>{}", res.status().to_string(), debug_index())
+            });
         }
-    }
+        Ok(res)
+    }));
+
+    server.listen("localhost:8080").await.expect("listen");
+
+    Ok(())
 }
-*/
+
+fn debug_index() -> String {
+    fn anchor(href: &str, desc: &str) -> String {
+        format!("<a href={}>{}</a> <span>{}</span>", href, href, desc)
+    }
+
+    vec![
+        anchor("get_articles", ""),
+        anchor("get_snaphot_metadatas_from_article", "url"),
+        anchor("insert_article", "url"),
+        anchor("get_snapshot", "id"),
+    ]
+    .join("<br />")
+}
