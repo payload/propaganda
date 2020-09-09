@@ -1982,6 +1982,7 @@ dependencies = [
  "sqlx",
  "surf",
  "tide",
+ "xactor",
 ]
 
 [[package]]
@@ -3061,3 +3062,30 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+
+[[package]]
+name = "xactor"
+version = "0.7.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86ef49f231e27f551d72bfba34a0b7e54c28fa84049cdaf5d7ca85e4e23fc8fb"
+dependencies = [
+ "anyhow",
+ "async-std",
+ "async-trait",
+ "fnv",
+ "futures 0.3.5",
+ "once_cell",
+ "slab",
+ "xactor-derive",
+]
+
+[[package]]
+name = "xactor-derive"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce65a6e78fedf06f36b8e7b3154175226fad605971f535062339c05f5caecbed"
+dependencies = [
+ "proc-macro2 1.0.19",
+ "quote 1.0.7",
+ "syn 1.0.39",
+]
