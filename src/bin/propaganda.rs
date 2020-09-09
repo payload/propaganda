@@ -1,6 +1,7 @@
 use anyhow::*;
 use propaganda::db::ProvideArticles;
 use propaganda::*;
+use xactor::Actor; // propaganda needs to export this
 
 #[async_std::main]
 async fn main() -> Result<()> {
@@ -26,7 +27,11 @@ async fn main() -> Result<()> {
 
     server.with(tide::utils::After(&debug_response_middleware));
 
-    server.listen("localhost:8080").await.expect("listen");
+    let join_server = xactor::spawn(server.clone().listen("localhost:8080"));
+    let addr_scraper = scraper::Scraper.start().await?;
+
+    join_server.await?;
+    addr_scraper.wait_for_stop().await;
 
     Ok(())
 }
