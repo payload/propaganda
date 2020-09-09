@@ -22,32 +22,35 @@ async fn main() -> Result<()> {
         .get(&http::get_snaphot_metadatas_from_article);
     server.at("/insert_article").get(&http::insert_article);
     server.at("/get_snapshot").get(&http::get_snaphot);
+    server.at("/favicon.ico").get(&favicon);
 
-    server
-        .at("/favicon.ico")
-        .get(|_| async { Ok(tide::Response::builder(200).build()) });
-
-    // in case there is no body, make it html and show the debug_index
-    // also show the error string in case there is any
-    //
-    // with some error handling and string matching this could be
-    // a generic interactive HTTP API user interface
-    server.with(tide::utils::After(|mut res: tide::Response| async {
-        if res.len().unwrap_or_default() == 0 {
-            res.set_content_type(mime::html());
-
-            res.set_body(if let Some(err) = res.error() {
-                format!("<h4>{}</h4>{}", err.to_string(), debug_index())
-            } else {
-                format!("<h4>{}</h4>{}", res.status().to_string(), debug_index())
-            });
-        }
-        Ok(res)
-    }));
+    server.with(tide::utils::After(&debug_response_middleware));
 
     server.listen("localhost:8080").await.expect("listen");
 
     Ok(())
+}
+
+async fn favicon<R>(_req: R) -> tide::Result {
+    Ok(tide::Response::new(200))
+}
+
+/// in case there is no body, make it html and show the debug_index
+/// also show the error string in case there is any
+///
+/// with some error handling and string matching this could be
+/// a generic interactive HTTP API user interface
+async fn debug_response_middleware(mut res: tide::Response) -> tide::Result {
+    if res.len().unwrap_or_default() == 0 {
+        res.set_content_type(mime::html());
+
+        res.set_body(if let Some(err) = res.error() {
+            format!("<h4>{}</h4>{}", err.to_string(), debug_index())
+        } else {
+            format!("<h4>{}</h4>{}", res.status().to_string(), debug_index())
+        });
+    }
+    Ok(res)
 }
 
 fn debug_index() -> String {
