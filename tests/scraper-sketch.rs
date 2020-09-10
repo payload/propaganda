@@ -1,7 +1,7 @@
 use anyhow::*;
 use async_std::task;
-use std::time::Duration;
 use futures::prelude::*;
+use std::time::Duration;
 
 #[async_std::test]
 async fn fun() -> Result<()> {

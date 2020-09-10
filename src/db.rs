@@ -1,7 +1,7 @@
 use anyhow::*;
 use async_trait::async_trait;
-use sqlx::prelude::*;
 use mockall::automock;
+use sqlx::prelude::*;
 
 #[derive(sqlx::FromRow, Debug, serde::Serialize)]
 pub struct Article {

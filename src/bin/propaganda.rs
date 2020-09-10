@@ -15,7 +15,7 @@ async fn main() -> Result<()> {
     let mut conn = pool.acquire().await?;
     conn.ensure_created_tables().await?;
 
-    let mut server = tide::with_state(pool);
+    let mut server = tide::with_state(pool.clone());
 
     server.at("/get_articles").get(&http::get_articles);
     server
@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
     server.with(tide::utils::After(&debug_response_middleware));
 
     let join_server = xactor::spawn(server.clone().listen("localhost:8080"));
-    let addr_scraper = scraper::Scraper.start().await?;
+    let addr_scraper = scraper::Scraper::new(pool.clone()).start().await?;
 
     join_server.await?;
     addr_scraper.wait_for_stop().await;
