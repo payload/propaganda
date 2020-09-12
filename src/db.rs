@@ -39,7 +39,7 @@ pub trait ProvideArticles {
         &mut self,
         article: &Article,
     ) -> Result<Vec<SnapshotMetadata>>;
-    async fn get_youngest_snaphot(&mut self, article: &Article) -> Result<Snapshot>;
+    async fn get_youngest_snaphot(&mut self, article: &Article) -> Result<Option<Snapshot>>;
     async fn get_snaphot(&mut self, id: i32) -> Result<Snapshot>;
     async fn insert_snapshot(
         &mut self,
@@ -154,13 +154,13 @@ impl ProvideArticles for sqlx::SqliteConnection {
         .anyhow()
     }
 
-    async fn get_youngest_snaphot(&mut self, article: &Article) -> Result<Snapshot> {
+    async fn get_youngest_snaphot(&mut self, article: &Article) -> Result<Option<Snapshot>> {
         sqlx::query_as(
             r"
             SELECT * FROM snapshots WHERE article_id = $1 ORDER BY archived_at DESC LIMIT 1",
         )
         .bind(article.article_id)
-        .fetch_one(self)
+        .fetch_optional(self)
         .await
         .anyhow()
     }
