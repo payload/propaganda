@@ -37,7 +37,7 @@ pub trait ProvideArticles {
 
     async fn get_snaphot_metadatas_from_article(
         &mut self,
-        article: &Article,
+        article_id: i32,
     ) -> Result<Vec<SnapshotMetadata>>;
     async fn get_youngest_snaphot(&mut self, article: &Article) -> Result<Option<Snapshot>>;
     async fn get_snaphot(&mut self, id: i32) -> Result<Snapshot>;
@@ -142,13 +142,13 @@ impl ProvideArticles for sqlx::SqliteConnection {
 
     async fn get_snaphot_metadatas_from_article(
         &mut self,
-        article: &Article,
+        article_id: i32,
     ) -> Result<Vec<SnapshotMetadata>> {
         sqlx::query_as(
             r"
             SELECT * FROM snapshots WHERE article_id = $1",
         )
-        .bind(article.article_id)
+        .bind(article_id)
         .fetch_all(self)
         .await
         .anyhow()

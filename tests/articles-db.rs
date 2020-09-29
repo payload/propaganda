@@ -47,7 +47,7 @@ async fn insert_snapshots_and_get_snapshots() -> Result<()> {
     let html3 = "Think about a cat.";
     db.insert_snapshot(&article2, archived_at, html3).await?;
 
-    let snapshots = db.get_snaphot_metadatas_from_article(&article1).await?;
+    let snapshots = db.get_snaphot_metadatas_from_article(article1.article_id).await?;
     assert_eq!(snapshots.len(), 2);
     let snapshot1 = db.get_snaphot(snapshots[0].snapshot_id).await?;
     let snapshot2 = db.get_snaphot(snapshots[1].snapshot_id).await?;

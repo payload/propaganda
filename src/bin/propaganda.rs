@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
 
     server.with(tide::utils::After(&debug_response_middleware));
 
-    let join_server = xactor::spawn(server.clone().listen("localhost:8080"));
+    let join_server = async_std::task::spawn(server.clone().listen("localhost:8080"));
     let addr_scraper = scraper::Scraper::new(pool.clone()).start().await?;
 
     join_server.await?;
@@ -46,6 +46,8 @@ async fn favicon<R>(_req: R) -> tide::Result {
 /// with some error handling and string matching this could be
 /// a generic interactive HTTP API user interface
 async fn debug_response_middleware(mut res: tide::Response) -> tide::Result {
+    res.append_header("Access-Control-Allow-Origin", "*");
+
     if res.len().unwrap_or_default() == 0 {
         res.set_content_type(mime::html());
 

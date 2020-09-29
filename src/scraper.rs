@@ -1,4 +1,4 @@
-use crate::db::ProvideArticles;
+use crate::db::{ ProvideArticles, Article };
 use anyhow::anyhow;
 use std::time::Duration;
 use xactor::*;
@@ -52,7 +52,7 @@ impl Scraper {
             let snapshot_is_outdated = conn
                 .get_youngest_snaphot(&outdated)
                 .await?
-                .filter(|s| compare_article_fulltext(&s.html, &html))
+                .filter(|s| &s.html == &html)
                 .is_none();
 
             if snapshot_is_outdated {
@@ -61,12 +61,37 @@ impl Scraper {
         }
         Ok(())
     }
+
+    async fn fetch_whatthecommit(&self) -> Result<()> {
+        let mut conn = self.pool.acquire().await?;
+        let url = "http://whatthecommit.com/";
+        let article = conn.insert_article(url).await?;
+        self.insert_snapshot(&mut conn, &article).await?;
+        Ok(())
+    }
+
+    async fn insert_snapshot(&self, provider: &mut sqlx::pool::PoolConnection<sqlx::SqliteConnection>, article: &Article) -> Result<()> {
+        let html = surf_get_string(&article.url).await?;
+        provider.insert_snapshot(article, self.timestamp(), &html).await?;
+        Ok(())
+    }
+
+    fn timestamp(&self) -> i32 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i32
+    }
 }
 
 #[async_trait::async_trait]
 impl Actor for Scraper {
     async fn started(&mut self, ctx: &mut Context<Self>) -> Result<()> {
         ctx.send_interval(FetchTopArticle, Duration::from_secs(60));
+        self.fetch_whatthecommit().await?;
+        self.fetch_whatthecommit().await?;
+        self.fetch_whatthecommit().await?;
+        self.fetch_whatthecommit().await?;
         Ok(())
     }
 }
@@ -90,6 +115,7 @@ impl Handler<FetchTopArticle> for Scraper {
 }
 
 async fn surf_get_string(uri: impl AsRef<str>) -> Result<String> {
+    surf::url::Url::parse(uri.as_ref())?;
     surf::get(uri)
         .recv_string()
         .await
@@ -103,14 +129,26 @@ fn compare_article_fulltext(a: &str, b: &str) -> bool {
 /// for tagesschau.de
 fn get_article_fulltext(html: &str) -> String {
     let fragment = scraper::Html::parse_fragment(&html);
-    let selector = scraper::Selector::parse("div.storywrapper").unwrap();
     let mut fulltext = String::new();
-    for element in fragment.select(&selector) {
-        for text in element.text() {
-            let text = text.trim();
-            if !text.is_empty() {
-                fulltext.push_str(text);
-                fulltext.push_str("\n");
+    
+    if let Ok(selector) = scraper::Selector::parse("div.storywrapper") {
+        for element in fragment.select(&selector) {
+            for text in element.text() {
+                let text = text.trim();
+                if !text.is_empty() {
+                    fulltext.push_str(text);
+                    fulltext.push_str("\n");
+                }
+            }
+        }
+    } else if let Ok(selector) = scraper::Selector::parse("div#content") {
+        for element in fragment.select(&selector) {
+            for text in element.text() {
+                let text = text.trim();
+                if !text.is_empty() {
+                    fulltext.push_str(text);
+                    fulltext.push_str("\n");
+                }
             }
         }
     }
